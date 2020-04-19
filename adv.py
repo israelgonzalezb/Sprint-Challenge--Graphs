@@ -34,14 +34,19 @@ player = Player(world.starting_room)
 # Add that direction traveled to the traversal path
 # For the current room, mark the opposite direction as 1 because you just came in that way
 
+
 explorer_map = {}
+unexplored_rooms = 1
 
 
-def explorer():
+def explorer(previous_room=0):
+    global unexplored_rooms
+    print(f"The Map has {unexplored_rooms} unexplored rooms")
     exits = player.current_room.get_exits()
     print("exits", exits)
     room = player.current_room.id
-    print("map", explorer_map, "room", room)
+    print("map", explorer_map, "previous room",
+          previous_room, "current room", room)
     exit_count = len(exits)
     random_indexes = []
     possible_directions = []
@@ -50,11 +55,13 @@ def explorer():
 
     if room not in explorer_map:
         explorer_map[room] = {}
+        unexplored_rooms -= 1
 
     for exit_direction in exits:
         if exit_direction not in explorer_map[room]:
             # -> {0: {'n': ?, 's': '?', 'w': '?', 'e': '?'}}
             explorer_map[room][exit_direction] = "?"
+            unexplored_rooms += 1
 
     # we have all the unexplored exits, now let's randomly pick one of the unexplored ones
     # make a list of all unexplored exits
@@ -62,23 +69,41 @@ def explorer():
         if explorer_map[room][exit_direction] is "?":
             possible_directions.append(exit_direction)
 
-    # pick a random direction
+    # if there are any unexplored exits, pick a random one to travel to
     if len(possible_directions) > 0:
-        print(f"This room has {len(possible_directions)} unexplored exits")
+        print(
+            f"This room has {len(possible_directions)} unexplored exits: {possible_directions}")
         random_direction = random.randrange(0, len(possible_directions))
-        print(f"Moving {random_direction}")
-        player.travel(exits[random_direction])
+        print(f"Moving {possible_directions[random_direction]}")
+        player.travel(possible_directions[random_direction])
         previous_room = room
         new_room = player.current_room.id
-        explorer_map[previous_room][exits[random_direction]] = new_room
+        explorer_map[previous_room][possible_directions[random_direction]] = new_room
         if new_room not in explorer_map:
             explorer_map[new_room] = {}
-        opposite_direction = opposite_directions[exits[random_direction]]
-        explorer_map[new_room][opposite_direction] = previous_room
-        explorer()
+            unexplored_rooms -= 1
+        opposite_direction = opposite_directions[possible_directions[random_direction]]
+        if explorer_map[new_room].get(opposite_direction, "?") is "?":
+            explorer_map[new_room][opposite_direction] = previous_room
+        explorer(previous_room)
+    # if there is only one direction left, then let's go backwards cuz we're at a dead end
     if len(exits) is 1:
         print("Dead end, doubling back")
         player.travel(exits[0])
+        explorer(room)
+    # finally, if there are more than 1 exits and all rooms are explored, let's pick a random direction to travel
+    # just make sure not to go backwards from where we just came from
+    if len(possible_directions) is 0 and unexplored_rooms > 0:
+        print(f"This room has no unexplored exits")
+        allowed_directions = []
+        # Make a list of all the possible exits, excluding the one we came from
+        for exit_direction in exits:
+            if explorer_map[room][exit_direction] is not previous_room:
+                allowed_directions.append(exit_direction)
+        # for the allowed directions, pick a random one and go there
+        random_direction = random.randrange(0, len(allowed_directions))
+        player.travel(allowed_directions[random_direction])
+        explorer(room)
 
     # while len(random_indexes) < exit_count:
     #     random_index = random.randrange(0, exit_count)
@@ -101,9 +126,8 @@ def explorer():
     #         explorer()
 
     #direction = directions[random.randint(0,4)]
-
-
-explorer()
+while unexplored_rooms > 0:
+    explorer()
 print(explorer_map)
 
 traversal_path = ["n", "n", "n"]
