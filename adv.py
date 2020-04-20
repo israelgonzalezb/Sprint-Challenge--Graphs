@@ -14,7 +14,7 @@ world = World()
 # map_file = "maps/test_cross.txt"
 # map_file = "maps/test_loop.txt"
 # map_file = "maps/test_loop_fork.txt"
-#map_file = "maps/main_maze.txt"
+map_file = "maps/main_maze.txt"
 
 # Loads the map into a dictionary
 room_graph = literal_eval(open(map_file, "r").read())
@@ -40,93 +40,104 @@ global unexplored_exits
 unexplored_exits = 0
 global traversal_path
 traversal_path = []
+opposite_directions = {"n": "s", "s": "n", "e": "w", "w": "e"}
+iter_previous_room = 0
 
 
 def explorer(previous_room=0):
     global unexplored_exits
     global traversal_path
+    global iter_previous_room
     exits = player.current_room.get_exits()
     room = player.current_room.id
-    print(f"Room {room}s exits: {exits}")
-    print("map", explorer_map, "previous room",
-          previous_room, "current room", room)
+    # print(f"Room {room}s exits: {exits}")
+    # print("map", explorer_map, "previous room",
+    # previous_room, "current room", room)
     unexplored_directions = []
-
-    opposite_directions = {"n": "s", "s": "n", "e": "w", "w": "e"}
 
     if room not in explorer_map:
         explorer_map[room] = {}
         for exit_direction in exits:
-            print(f"Checking {exit_direction} of {explorer_map[room]}")
+            # print(f"Checking {exit_direction} of {explorer_map[room]}")
             explorer_map[room][exit_direction] = "?"
             unexplored_exits += 1  # 1: 4
-            print(
-                f"Added {exit_direction} to room {room}, total unexplored exits is {unexplored_exits}")
-        print(f"Room {room} has been added to the map: {explorer_map[room]}")
+            # print(
+            # f"Added {exit_direction} to room {room}, total unexplored exits is {unexplored_exits}")
+        # print(f"Room {room} has been added to the map: {explorer_map[room]}")
 
     # make a list of all unexplored exits for this room
     for exit_direction in exits:
         if explorer_map[room].get(exit_direction, None) is "?":
             unexplored_directions.append(exit_direction)
-            print(
-                f"Added {exit_direction} to possible directions of room {room}: {unexplored_directions}")
+            # print(
+            # f"Added {exit_direction} to possible directions of room {room}: {unexplored_directions}")
         elif explorer_map[room].get(exit_direction, None) is None:
             explorer_map[room][exit_direction] = "?"
             unexplored_exits += 1
             unexplored_directions.append(exit_direction)
-            print(
-                f"Added {exit_direction} to possible directions of room {room}: {unexplored_directions}")
-    print(f"Room {room}s exits: {explorer_map[room]}")
-    print(f"The Map has {unexplored_exits} unexplored exits")
-    print(f"Will prioritize {room}s unexplored exits: {unexplored_directions}")
+            # print(
+            # f"Added {exit_direction} to possible directions of room {room}: {unexplored_directions}")
+    # print(f"Room {room}s exits: {explorer_map[room]}")
+    # print(f"The Map has {unexplored_exits} unexplored exits")
+    # print(f"Will prioritize {room}s unexplored exits: {unexplored_directions}")
 
     # we have all the current room's unexplored exits, now let's randomly pick one of the unexplored ones
     # if there are any unexplored exits on the map
     if unexplored_exits > 0:
         # if the current room has any unexplored exits
         if len(unexplored_directions) > 0:
-            print(
-                f"This room has {len(unexplored_directions)} unexplored exits: {unexplored_directions}")
+            # print(
+            # f"This room has {len(unexplored_directions)} unexplored exits: {unexplored_directions}")
             random_direction = random.randrange(0, len(unexplored_directions))
-            print(f"Moving {unexplored_directions[random_direction]}")
+            # print(f"Moving {unexplored_directions[random_direction]}")
             player.travel(unexplored_directions[random_direction])
             traversal_path.append(unexplored_directions[random_direction])
             previous_room = room
+            iter_previous_room = room
             new_room = player.current_room.id
             # update our map and count of unexplored rooms
             explorer_map[previous_room][unexplored_directions[random_direction]] = new_room
             unexplored_exits -= 1  # 1: 3
-            print(f"Total unexplored exits is {unexplored_exits}")
+            # print(f"Total unexplored exits is {unexplored_exits}")
             if new_room not in explorer_map:
-                print(f"Room {new_room} has been added to the map")
+                # print(f"Room {new_room} has been added to the map")
                 explorer_map[new_room] = {}
+                for exit_direction in player.current_room.get_exits():
+                    if explorer_map[new_room].get(exit_direction, None) is None:
+                        # print(
+                        # f"Checking {exit_direction} of {explorer_map[new_room]}")
+                        explorer_map[new_room][exit_direction] = "?"
+                        unexplored_exits += 1  # 1: 4
+                        # print(
+                        # f"Added {exit_direction} to room {new_room}, total unexplored exits is {unexplored_exits}")
             opposite_direction = opposite_directions[unexplored_directions[random_direction]]
             if explorer_map[new_room].get(opposite_direction, None) is "?":
                 explorer_map[new_room][opposite_direction] = previous_room
                 unexplored_exits -= 1
-                print(f"Added {opposite_direction} to room {new_room}")
-                print(f"Total unexplored exits is {unexplored_exits}")
+                # print(f"Added {opposite_direction} to room {new_room}")
+                # print(f"Total unexplored exits is {unexplored_exits}")
             else:
                 explorer_map[new_room][opposite_direction] = previous_room
-                print(f"Updated {opposite_direction} of room {new_room}")
-                print(f"Total unexplored exits is {unexplored_exits}")
+                # print(f"Updated {opposite_direction} of room {new_room}")
+                # print(f"Total unexplored exits is {unexplored_exits}")
 
-            explorer(previous_room)
+            # explorer(previous_room)
         # if there is only one direction left, then let's go backwards cuz we're at a dead end
         if len(exits) is 1:
-            print("Dead end, doubling back")
+            # print("Dead end, doubling back")
             player.travel(exits[0])
             if explorer_map[room].get(exits[0], "?") is "?":
                 explorer_map[new_room][exits[0]] = previous_room
             if unexplored_exits > 0:
                 traversal_path.append(exits[0])
-                explorer(room)
+                iter_previous_room = room
+                # explorer(room)
         # finally, if there are more than 1 exits and all rooms are explored, let's pick a random direction to travel
         # just make sure not to go backwards from where we just came from
         elif len(unexplored_directions) is 0:
-            print(f"Room {room} has no unexplored exits")
-            print(
-                f"Room {room} has these exits: {exits}, we came from {previous_room}")
+            # print(f"Room {room} has no unexplored exits")
+            # print(
+            # f"Room {room} has these exits: {exits}, we came from {previous_room}")
             allowed_directions = []
             # Make a list of all the possible exits, excluding the one we came from
             for exit_direction in exits:
@@ -137,13 +148,16 @@ def explorer(previous_room=0):
             player.travel(allowed_directions[random_direction])
             if unexplored_exits > 0:
                 traversal_path.append(allowed_directions[random_direction])
-                explorer(room)
+                iter_previous_room = room
+                # explorer(room)
 
 
-explorer()
+explorer(iter_previous_room)
+while unexplored_exits > 0:
+    explorer(iter_previous_room)
 
-print(explorer_map)
-print(traversal_path)
+# print(explorer_map)
+# print(traversal_path)
 
 # {0: {'n': 1, 's': 5, 'w': 7, 'e': 3}, 1: {'s': 0, 'n': 2}, 2: {'s': 1}, 7: {'e': 0, 'w': 8},
 # 8: {'e': 7, 's': 9}, 9: {'n': 8, 's': 10}, 10: {'n': 9, 'e': 11}, 11: {'w': 10, 'e': 6},
