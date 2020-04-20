@@ -34,6 +34,11 @@ player = Player(world.starting_room)
 # Add that direction traveled to the traversal path
 # For the current room, mark the opposite direction as 1 because you just came in that way
 
+# if a room has only one exit, it's a dead end
+# if the room leading to that exit has only two exits, it's a dead end
+# and so on until we reach a room with three exits or more...
+# these passages should never be explored again once they've been explored once...
+
 
 explorer_map = {}
 global unexplored_exits
@@ -42,12 +47,14 @@ global traversal_path
 traversal_path = []
 opposite_directions = {"n": "s", "s": "n", "e": "w", "w": "e"}
 iter_previous_room = 0
+dead_ends = []
 
 
 def explorer(previous_room=0):
     global unexplored_exits
     global traversal_path
     global iter_previous_room
+    global dead_ends
     exits = player.current_room.get_exits()
     room = player.current_room.id
     # print(f"Room {room}s exits: {exits}")
@@ -125,6 +132,28 @@ def explorer(previous_room=0):
         # if there is only one direction left, then let's go backwards cuz we're at a dead end
         if len(exits) is 1:
             # print("Dead end, doubling back")
+            if room not in dead_ends:
+                dead_ends.append(room)
+            # if the previous room had only two exits, it lead only to the dead end so blacklist it
+
+            def dead_end_checker(room_to_check):
+                if len(explorer_map[room_to_check]) is 2:
+                    for connection in explorer_map[room_to_check]:
+                        if len(explorer_map[explorer_map[room_to_check][connection]]) is 2 and explorer_map[room_to_check][connection] not in dead_ends:
+                            dead_ends.append(
+                                explorer_map[room_to_check][connection])
+                            dead_end_checker(
+                                explorer_map[room_to_check][connection])
+            dead_end_checker(previous_room)
+            # if len(explorer_map[previous_room]) is 2:
+            #     for connections in explorer_map[previous_room]:
+
+            #     if previous_room not in dead_ends:
+            #         dead_ends.append(previous_room)
+            #     for passage in explorer_map[previous_room]:
+            #         connected_room = explorer_map[previous_room][passage]
+            #         if len(explorer_map[connected_room]) is 2 and explorer_map[connected_room] not in dead_ends:
+            #             dead_ends.append(connected_room)
             player.travel(exits[0])
             if explorer_map[room].get(exits[0], "?") is "?":
                 explorer_map[new_room][exits[0]] = previous_room
@@ -141,13 +170,15 @@ def explorer(previous_room=0):
             allowed_directions = []
             # Make a list of all the possible exits, excluding the one we came from
             for exit_direction in exits:
-                if explorer_map[room][exit_direction] is not previous_room:
+                if explorer_map[room][exit_direction] is not previous_room and (explorer_map[room][exit_direction] not in dead_ends or len(exits) is 2):
                     allowed_directions.append(exit_direction)
             # for the allowed directions, pick a random one and go there
-            random_direction = random.randrange(0, len(allowed_directions))
-            player.travel(allowed_directions[random_direction])
-            if unexplored_exits > 0:
+            if len(allowed_directions) > 0:
+                random_direction = random.randrange(0, len(allowed_directions))
+                player.travel(allowed_directions[random_direction])
                 traversal_path.append(allowed_directions[random_direction])
+
+            if unexplored_exits > 0:
                 iter_previous_room = room
                 # explorer(room)
 
@@ -156,7 +187,8 @@ explorer(iter_previous_room)
 while unexplored_exits > 0:
     explorer(iter_previous_room)
 
-# print(explorer_map)
+print(explorer_map)
+print(dead_ends)
 # print(traversal_path)
 
 # {0: {'n': 1, 's': 5, 'w': 7, 'e': 3}, 1: {'s': 0, 'n': 2}, 2: {'s': 1}, 7: {'e': 0, 'w': 8},
