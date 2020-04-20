@@ -45,9 +45,24 @@ global unexplored_exits
 unexplored_exits = 0
 global traversal_path
 traversal_path = []
-opposite_directions = {"n": "s", "s": "n", "e": "w", "w": "e"}
 iter_previous_room = 0
 dead_ends = []
+opposite_directions = {"n": "s", "s": "n", "e": "w", "w": "e"}
+
+
+def reset():
+    global player
+    player = Player(world.starting_room)
+    global explorer_map
+    explorer_map = {}
+    global unexplored_exits
+    unexplored_exits = 0
+    global traversal_path
+    traversal_path = []
+    global iter_previous_room
+    global dead_ends
+    iter_previous_room = 0
+    dead_ends = []
 
 
 def explorer(previous_room=0):
@@ -137,9 +152,11 @@ def explorer(previous_room=0):
             # if the previous room had only two exits, it lead only to the dead end so blacklist it
 
             def dead_end_checker(room_to_check):
-                if len(explorer_map[room_to_check]) is 2:
+                if len(explorer_map[room_to_check]) is 2 and room_to_check is not "?":
+                    if room_to_check not in dead_ends:
+                        dead_ends.append(room_to_check)
                     for connection in explorer_map[room_to_check]:
-                        if len(explorer_map[explorer_map[room_to_check][connection]]) is 2 and explorer_map[room_to_check][connection] not in dead_ends:
+                        if explorer_map[room_to_check][connection] is not "?" and len(explorer_map[explorer_map[room_to_check][connection]]) is 2 and explorer_map[room_to_check][connection] not in dead_ends:
                             dead_ends.append(
                                 explorer_map[room_to_check][connection])
                             dead_end_checker(
@@ -182,45 +199,84 @@ def explorer(previous_room=0):
                 iter_previous_room = room
                 # explorer(room)
 
+# TRAVERSAL TEST
 
-explorer(iter_previous_room)
-while unexplored_exits > 0:
+
+def traversal_test():
+    visited_rooms = set()
+    player.current_room = world.starting_room
+    visited_rooms.add(player.current_room)
+
+    for move in traversal_path:
+        player.travel(move)
+        visited_rooms.add(player.current_room)
+
+    if len(visited_rooms) == len(room_graph):
+        print(
+            f"TESTS PASSED: {len(traversal_path)} moves, {len(visited_rooms)} rooms visited")
+        return True
+    else:
+        print("TESTS FAILED: INCOMPLETE TRAVERSAL")
+        print(f"{len(room_graph) - len(visited_rooms)} unvisited rooms")
+        return False
+
+
+traversal_moves = [2356, 1843, 1627]
+# explorer(iter_previous_room)
+# while unexplored_exits > 0:
+#     explorer(iter_previous_room)
+# traversal_test()
+
+
+def main_func():
     explorer(iter_previous_room)
+    while unexplored_exits > 0:
+        if len(traversal_path) < traversal_moves[-1]:
+            explorer(iter_previous_room)
+        else:
+            print(f"Attempt failed, moves reached {len(traversal_path)}")
+            reset()
+            explorer(iter_previous_room)
+    if traversal_test():
+        traversal_moves.append(len(traversal_path))
+    print(f"The last attempt hit {traversal_moves[-1]} moves. Try again?")
+    while True:
+        cmds = input("-> ").lower()
+        if cmds[0] is "y":
+            print("ok")
+            reset()
+            main_func()
+            break
+        elif cmds[0] == "q":
+            print(traversal_path)
+            break
 
-print(explorer_map)
-print(dead_ends)
-# print(traversal_path)
+
+main_func()
+
+# print(explorer_map)
+# print(dead_ends)
+# for i in explorer_map:
+#     if len(explorer_map[i]) < 3:
+#         if i not in dead_ends:
+#             print(f"A dead end was not logged...: {i}")
+print(traversal_path)
 
 # {0: {'n': 1, 's': 5, 'w': 7, 'e': 3}, 1: {'s': 0, 'n': 2}, 2: {'s': 1}, 7: {'e': 0, 'w': 8},
 # 8: {'e': 7, 's': 9}, 9: {'n': 8, 's': 10}, 10: {'n': 9, 'e': 11}, 11: {'w': 10, 'e': 6},
 # 6: {'w': 11, 'n': 5}, 5: {'s': 6, 'n': 0}, 3: {'w': 0, 'e': 4}, 4: {'w': 3}}
 # {0: {'n': 1, 's': 5, 'w': 7, 'e': 3}, 3: {'w': 0, 'e': 3}, 5: {'n': 0, 's': 0}, 1: {'n': 1, 's': 0}, 7: {'w': 8, 'e': 0}, 8: {'e': 7}}
-# TRAVERSAL TEST
-visited_rooms = set()
-player.current_room = world.starting_room
-visited_rooms.add(player.current_room)
-
-for move in traversal_path:
-    player.travel(move)
-    visited_rooms.add(player.current_room)
-
-if len(visited_rooms) == len(room_graph):
-    print(
-        f"TESTS PASSED: {len(traversal_path)} moves, {len(visited_rooms)} rooms visited")
-else:
-    print("TESTS FAILED: INCOMPLETE TRAVERSAL")
-    print(f"{len(room_graph) - len(visited_rooms)} unvisited rooms")
 
 
 #######
 # UNCOMMENT TO WALK AROUND
 #######
 player.current_room.print_room_description(player)
-while True:
-    cmds = input("-> ").lower().split(" ")
-    if cmds[0] in ["n", "s", "e", "w"]:
-        player.travel(cmds[0], True)
-    elif cmds[0] == "q":
-        break
-    else:
-        print("I did not understand that command.")
+# while True:
+#     cmds = input("-> ").lower().split(" ")
+#     if cmds[0] in ["n", "s", "e", "w"]:
+#         player.travel(cmds[0], True)
+#     elif cmds[0] == "q":
+#         break
+#     else:
+#         print("I did not understand that command.")
